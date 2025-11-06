@@ -653,25 +653,33 @@
       chunk.set(x % CHUNK_SIZE, y, z % CHUNK_SIZE, blockId);
       chunk.updateMeshes();
     }
-    function updateChunksAroundPlayer(player, scene) {
-  const viewRadius = 5;
+   function updateChunksAroundPlayer(player, scene) {
+     const VIEW_RADIUS = 2; // loads 5x5 = 25 chunks
+                
   const cx = Math.floor(player.pos.x / CHUNK_SIZE);
   const cz = Math.floor(player.pos.z / CHUNK_SIZE);
   const needed = new Set();
 
-  // Load new chunks in a circle around player
-  for (let dx = -viewRadius; dx <= viewRadius; dx++) {
-    for (let dz = -viewRadius; dz <= viewRadius; dz++) {
-      if (Math.hypot(dx, dz) <= viewRadius) {
-        const key = `${cx + dx},${cz + dz}`;
-        needed.add(key);
-        if (!loadedChunks.has(key)) {
-          const chunk = new VoxelWorld(cx + dx, cz + dz, scene);
-          loadedChunks.set(key, chunk);
-        }
+  for (let dx = -VIEW_RADIUS; dx <= VIEW_RADIUS; dx++) {
+    for (let dz = -VIEW_RADIUS; dz <= VIEW_RADIUS; dz++) {
+      const key = `${cx + dx},${cz + dz}`;
+      needed.add(key);
+      if (!loadedChunks.has(key)) {
+        const chunk = new VoxelWorld(cx + dx, cz + dz, scene);
+        loadedChunks.set(key, chunk);
       }
     }
   }
+
+  for (const key of loadedChunks.keys()) {
+    if (!needed.has(key)) {
+      const chunk = loadedChunks.get(key);
+      scene.remove(chunk.group);
+      loadedChunks.delete(key);
+    }
+  }
+    }
+    
 
   // Unload chunks outside of visual radius
   for (const key of loadedChunks.keys()) {
@@ -931,7 +939,7 @@
         velocity: new THREE.Vector3(),
         yaw: 0,
         pitch: 0,
-        speed: 4.0, jumpVel: 6.0, onGround: false
+        speed: 8.0, jumpVel: 6.0, onGround: false
       };
       raycaster = new THREE.Raycaster();
 
