@@ -507,6 +507,7 @@ function getPixels(encoded) {
     }
   },
   cobblestone: "0g0go08ww4xk0flk8hk0hts9o80k209a00ma8ago0ma8c1k0majkl40oi533s0oigbnc0oigd880qqd4ag0qqocu00qqoeew0syl5h40sywe0o0sywflk0sz7o540v6t52w0v6t6ns0v74f7c0xf169k0xf17ug0xfcge00znkhko0deje0h808bbbe000ekme000079ab90f000000ie0400000j0mlmj0e00j03210b000000000800000b0jcc0jm0040e9809000b0jm000000000mm000mm0jg0nmnejem0n09b08800000ejm0m00005ejjjf0jmj0n0m00ejmjeb0emj0m0fn00000000b000b0bj0el0mlj04450b0b608j0jmj08000000000000000008b8802054048088",
+     goldOre: "0g0g80sywflr0wb8hdr0zdjj0f13tzldr1x01czj1y6gem71z13ncv1z141z33223211210112333221203333220002121005120011265223332322642322311122110013212312223220762217610131227655432542222100223330001133336523210762122312232021644423332021251001330021122222333301643322110033167655421332642223442122221123332233211122222221322222233",
   bricks: "0g0g811twquw1aq69rs1cyeayg1cyecjc1f6b3lk1f6mc541f6mdq01hej4s80000000000000000052552220525522006775542067755400566455105664550000000000000000032203525422205255530377655420777352025563531055600000000000000000525522205255220077755420777554005664551056645500000000000000000322035254222052555303777554207773520255635310556"
      
 };
@@ -588,18 +589,20 @@ function getPixels(encoded) {
     let thirdPerson = false;
       
     const BLOCKS = {
-      1: { name: 'Dirt', color: 0x5a3e2b },
-      2: { name: 'Stone', color: 0x6e6e6e },
-      3: { name: 'Grass', color: 0x2e8b57 },
-      4: { name: 'Wood', color: 0x7b4a2b },
-      5: { name: 'Leaves', color: 0x3e803e },
-      6: { name: 'Sand', color: 0xd2b48c },
-      7: { name: 'Cobblestone', color: 0x555555 },
-      8: { name: 'Brick', color: 0x8b0000 },
-      9: { name: 'Gold', color: 0xffc300 },
+  1: { name: 'Dirt', color: 0x5a3e2b },
+  2: { name: 'Stone', color: 0x6e6e6e },
+  // FIX: 'Grass' was looking for 'grass', but the texture key is 'grassTop'.
+  3: { name: 'GrassTop', color: 0x2e8b57 }, 
+  // FIX: 'Wood' was looking for 'wood', but the texture key is 'oakPlanks'.
+  4: { name: 'OakPlanks', color: 0x7b4a2b },
+  5: { name: 'Leaves', color: 0x3e803e },
+  6: { name: 'Sand', color: 0xd2b48c },
+  7: { name: 'Cobblestone', color: 0x555555 },
+  // FIX: 'Brick' was looking for 'brick', but the texture key is 'bricks'.
+  8: { name: 'Bricks', color: 0x8b0000 },
+  // Block 9 'Gold' is still missing a texture key in the 'textures' object.
+  9: { name: 'Gold', color: 0xffc300 },
     }
-  
-    
     let inventory = {};
     for (const id in BLOCKS) {
       inventory[id] = 999; // start with full inventory in this no-save version
