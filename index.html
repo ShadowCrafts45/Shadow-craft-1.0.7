@@ -448,7 +448,8 @@ function getPixels(encoded) {
     }
    function makeBlockCanvasFromTexture(def) {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 16;
+     canvas.width = canvas.height = 64;
+                  
   const ctx = canvas.getContext('2d');
 
   if (typeof def === 'function') {
@@ -507,6 +508,7 @@ function getPixels(encoded) {
   },
   cobblestone: "0g0go08ww4xk0flk8hk0hts9o80k209a00ma8ago0ma8c1k0majkl40oi533s0oigbnc0oigd880qqd4ag0qqocu00qqoeew0syl5h40sywe0o0sywflk0sz7o540v6t52w0v6t6ns0v74f7c0xf169k0xf17ug0xfcge00znkhko0deje0h808bbbe000ekme000079ab90f000000ie0400000j0mlmj0e00j03210b000000000800000b0jcc0jm0040e9809000b0jm000000000mm000mm0jg0nmnejem0n09b08800000ejm0m00005ejjjf0jmj0n0m00ejmjeb0emj0m0fn00000000b000b0bj0el0mlj04450b0b608j0jmj08000000000000000008b8802054048088",
   bricks: "0g0g811twquw1aq69rs1cyeayg1cyecjc1f6b3lk1f6mc541f6mdq01hej4s80000000000000000052552220525522006775542067755400566455105664550000000000000000032203525422205255530377655420777352025563531055600000000000000000525522205255220077755420777554005664551056645500000000000000000322035254222052555303777554207773520255635310556"
+     
 };
      
     const select = document.getElementById('world-select');
@@ -611,7 +613,7 @@ function getPixels(encoded) {
     function inBounds(x,y,z){ return x>=0 && y>=0 && z>=0 && x<WORLD_W && y<WORLD_H && z<WORLD_D; }
 
     // procedural textures (small canvases)
-    const textureCanvases = {};
+    
     
     function makePlayerSkinCanvas() {
       const size = 64;
@@ -643,10 +645,10 @@ function getPixels(encoded) {
     }
     
     const materialCache = {};
-    function getMaterialForBlock(id) {
+   function getMaterialForBlock(id) {
   if (materialCache[id]) return materialCache[id];
 
-  const def = textures[BLOCKS[id].name.toLowerCase()];
+  const def = textures[BLOCKS[id].name.toLowerCase()] || textures.dirt;
   const canvas = makeBlockCanvasFromTexture(def);
   const tex = new THREE.CanvasTexture(canvas);
   tex.magFilter = THREE.NearestFilter;
@@ -656,7 +658,8 @@ function getPixels(encoded) {
   const mat = new THREE.MeshLambertMaterial({ map: tex });
   materialCache[id] = { material: mat, textureCanvas: canvas };
   return materialCache[id];
-                   }
+    }
+    
     
 
     // shared cube geometry to reduce allocations
