@@ -430,7 +430,85 @@
 
   <script type="module">
  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
+function setPixel(ctx, x, y, r, g, b, a = 255) {
+  const img = ctx.getImageData(0, 0, 16, 16);
+  const i = (y * 16 + x) * 4;
+  img.data[i] = r;
+  img.data[i + 1] = g;
+  img.data[i + 2] = b;
+  img.data[i + 3] = a;
+  ctx.putImageData(img, 0, 0);
+}
 
+function getPixels(encoded) {
+  const raw = atob(encoded.slice(4));
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+    }
+   function makeBlockCanvasFromTexture(def) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 16;
+  const ctx = canvas.getContext('2d');
+
+  if (typeof def === 'function') {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 16, 16);
+    def(ctx);
+  } else if (typeof def === 'string') {
+    const pix = getPixels(def);
+    const img = ctx.createImageData(16, 16);
+    for (let i = 0; i < pix.length; i++) img.data[i] = pix[i];
+    ctx.putImageData(img, 0, 0);
+  }
+
+  return canvas;
+      }
+   const textures = {
+  grassTop: function(ctx) {
+    for (let x = 0; x < 16; x++) {
+      for (let y = 0; y < 16; y++) {
+        const d = Math.random() * 0.25 + 0.65;
+        const r = 0x54 * d, g = 0xa0 * d, b = 0x48 * d;
+        setPixel(ctx, x, y, r, g, b);
+      }
+    }
+  },
+  leaves: function(ctx) {
+    for (let x = 0; x < 16; x++) {
+      for (let y = 0; y < 16; y++) {
+        const g = Math.floor(Math.random() * 30 + 100);
+        const b = Math.floor(Math.random() * 30);
+        const a = Math.random() < 0.35 ? 0 : 255;
+        setPixel(ctx, x, y, 0, g, b, a);
+      }
+    }
+  },
+  oakPlanks: function(ctx) {
+    for (let y = 0; y < 16; y++) {
+      const a = (y & 3) === 3 ? 0.7 : 1;
+      for (let x = 0; x < 16; x++) {
+        const mid = x === 8 && (y & 7) > 3 && a === 1 ? 0.85 : 1;
+        const rit = x === 15 && (y & 7) < 3 && a === 1 ? 0.85 : 1;
+        const r = (Math.random() * 0.1 + 0.9) * a * mid * rit;
+        setPixel(ctx, x, y, 190 * r, 154 * r, 96 * r);
+      }
+    }
+  },
+  dirt: "0g0g70ordrzz0u30g730wa4vzz0xnyl8f11lrk7315qj7jz1fh47pb6553365533033636350335403653650063306333633300635163503655353653535605335031350330553500033033366333433663663535336655335055335553353530355333033503300333336635353663650660554353355635155305303053556333333366353323553060365553063030663533555365534355335530",
+  stone: "0g0gf0v74dmg0v74f7c0xf169k0xf17ug0xfcet40xfcge00xfchyw0xfnoxk0zn97g80zn99140znkfzs0znkhko0znkj5k11vh8mw11vsirc5548515111111551595851111155b55155558535155bb555555556556b55bb55b5b85bbb56535bbbbbbbbbcb5b5bbbb6bebbeebebbbbbbbbbeebbebbbbeebb5b1beeeeb555bb555b5a5deebbbbbbb55bbbbeeebb558b555bbabdeebbb51b5551babeebbbb559555555beeb115b15555515552555bb5a5b751051241bb1555551",
+  sand: function(ctx) {
+    ctx.fillStyle = '#d2b48c';
+    ctx.fillRect(0, 0, 16, 16);
+    ctx.fillStyle = 'rgba(0,0,0,0.04)';
+    for (let i = 0; i < 100; i++) {
+      ctx.fillRect(Math.random() * 16, Math.random() * 16, 1, 1);
+    }
+  },
+  cobblestone: "0g0go08ww4xk0flk8hk0hts9o80k209a00ma8ago0ma8c1k0majkl40oi533s0oigbnc0oigd880qqd4ag0qqocu00qqoeew0syl5h40sywe0o0sywflk0sz7o540v6t52w0v6t6ns0v74f7c0xf169k0xf17ug0xfcge00znkhko0deje0h808bbbe000ekme000079ab90f000000ie0400000j0mlmj0e00j03210b000000000800000b0jcc0jm0040e9809000b0jm000000000mm000mm0jg0nmnejem0n09b08800000ejm0m00005ejjjf0jmj0n0m00ejmjeb0emj0m0fn00000000b000b0bj0el0mlj04450b0b608j0jmj08000000000000000008b8802054048088",
+  bricks: "0g0g811twquw1aq69rs1cyeayg1cyecjc1f6b3lk1f6mc541f6mdq01hej4s80000000000000000052552220525522006775542067755400566455105664550000000000000000032203525422205255530377655420777352025563531055600000000000000000525522205255220077755420777554005664551056645500000000000000000322035254222052555303777554207773520255635310556"
+};
+     
     const select = document.getElementById('world-select');
     const loadBtn = document.getElementById('load-world-button');
     const newBtn = document.getElementById('new-world-button');
@@ -534,70 +612,7 @@
 
     // procedural textures (small canvases)
     const textureCanvases = {};
-    function makeBlockCanvas(colorHex, opts = {}) {
-      const size = 64;
-      const c = document.createElement('canvas'); c.width = c.height = size;
-      const ctx = c.getContext('2d');
-
-      // Base fill
-      ctx.fillStyle = '#' + colorHex.toString(16).padStart(6,'0');
-      ctx.fillRect(0, 0, size, size);
-
-      // Soft lighting gradient
-      const g = ctx.createLinearGradient(0, 0, size, size);
-      g.addColorStop(0, 'rgba(255,255,255,0.08)');
-      g.addColorStop(1, 'rgba(0,0,0,0.08)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, size, size);
-
-      // Noise layer
-      const img = ctx.getImageData(0, 0, size, size);
-      for (let i = 0; i < img.data.length; i += 4) {
-        const v = (Math.random() * 24 - 12) | 0;
-        img.data[i] = clamp(img.data[i] + v, 0, 255);
-        img.data[i+1] = clamp(img.data[i+1] + v, 0, 255);
-        img.data[i+2] = clamp(img.data[i+2] + v, 0, 255);
-      }
-      ctx.putImageData(img, 0, 0);
-
-      // Stylized overlays
-      if (opts.type === 'wood') {
-        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-        ctx.lineWidth = 2;
-        for (let i = 8; i < size; i += 8) {
-          ctx.beginPath();
-          ctx.ellipse(size/2, size/2, i, i*0.6, 0, 0, Math.PI*2);
-          ctx.stroke();
-        }
-      }
-
-      if (opts.type === 'leaves') {
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
-        for (let i = 0; i < 25; i++) {
-          ctx.fillRect(Math.random()*size, Math.random()*size, Math.random()*6+1, Math.random()*6+1);
-        }
-      }
-
-      if (opts.type === 'sand') {
-        ctx.fillStyle = 'rgba(0,0,0,0.04)';
-        for (let i = 0; i < 100; i++) {
-          ctx.fillRect(Math.random()*size, Math.random()*size, 1, 1);
-        }
-      }
-
-      if (opts.type === 'stone') {
-        ctx.fillStyle = 'rgba(255,255,255,0.04)';
-        for (let i = 0; i < 80; i++) {
-          const x = Math.random() * size;
-          const y = Math.random() * size;
-          ctx.beginPath();
-          ctx.arc(x, y, Math.random()*2+1, 0, Math.PI*2);
-          ctx.fill();
-        }
-      }
-
-      return c;
-    }
+    
     function makePlayerSkinCanvas() {
       const size = 64;
       const c = document.createElement('canvas'); c.width = c.height = size;
@@ -628,22 +643,21 @@
     }
     
     const materialCache = {};
-    function getMaterialForBlock(id){
-      if(materialCache[id]) return materialCache[id];
-      const meta = BLOCKS[id];
-      const canvas = textureCanvases[id] || (textureCanvases[id] = makeBlockCanvas(meta.color, {
-        type: meta.name.toLowerCase().includes('wood') ? 'wood' :
-              meta.name.toLowerCase().includes('leaves') ? 'leaves' :
-              meta.name.toLowerCase().includes('sand') ? 'sand' :
-              meta.name.toLowerCase().includes('stone') ? 'stone' : ''
-      }));
+    function getMaterialForBlock(id) {
+  if (materialCache[id]) return materialCache[id];
+
+  const def = textures[BLOCKS[id].name.toLowerCase()];
+  const canvas = makeBlockCanvasFromTexture(def);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+
+  const mat = new THREE.MeshLambertMaterial({ map: tex });
+  materialCache[id] = { material: mat, textureCanvas: canvas };
+  return materialCache[id];
+                   }
     
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.needsUpdate = true;
-      const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: false });
-      materialCache[id] = { material: mat, textureCanvas: canvas };
-      return materialCache[id];
-    }
 
     // shared cube geometry to reduce allocations
     const cubeGeom = new THREE.BoxGeometry(1,1,1);
