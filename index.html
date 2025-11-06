@@ -654,7 +654,7 @@
       chunk.updateMeshes();
     }
     function updateChunksAroundPlayer(player, scene) {
-  const viewRadius = 10;
+  const viewRadius = 5;
   const cx = Math.floor(player.pos.x / CHUNK_SIZE);
   const cz = Math.floor(player.pos.z / CHUNK_SIZE);
   const needed = new Set();
