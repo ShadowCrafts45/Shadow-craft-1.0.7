@@ -654,17 +654,33 @@
       chunk.updateMeshes();
     }
     function updateChunksAroundPlayer(player, scene) {
-      const cx = Math.floor(player.pos.x / CHUNK_SIZE);
-      const cz = Math.floor(player.pos.z / CHUNK_SIZE);
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dz = -1; dz <= 1; dz++) {
-          const key = `${cx + dx},${cz + dz}`;
-          if (!loadedChunks.has(key)) {
-            const chunk = new VoxelWorld(cx + dx, cz + dz, scene);
-            loadedChunks.set(key, chunk);
-          }
+  const viewRadius = 10;
+  const cx = Math.floor(player.pos.x / CHUNK_SIZE);
+  const cz = Math.floor(player.pos.z / CHUNK_SIZE);
+  const needed = new Set();
+
+  // Load new chunks in a circle around player
+  for (let dx = -viewRadius; dx <= viewRadius; dx++) {
+    for (let dz = -viewRadius; dz <= viewRadius; dz++) {
+      if (Math.hypot(dx, dz) <= viewRadius) {
+        const key = `${cx + dx},${cz + dz}`;
+        needed.add(key);
+        if (!loadedChunks.has(key)) {
+          const chunk = new VoxelWorld(cx + dx, cz + dz, scene);
+          loadedChunks.set(key, chunk);
         }
       }
+    }
+  }
+
+  // Unload chunks outside of visual radius
+  for (const key of loadedChunks.keys()) {
+    if (!needed.has(key)) {
+      const chunk = loadedChunks.get(key);
+      if (scene && chunk && chunk.group) scene.remove(chunk.group);
+      loadedChunks.delete(key);
+    }
+  }
     }
 
     function inBounds(x, y, z) {
