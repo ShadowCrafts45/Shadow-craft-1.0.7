@@ -507,18 +507,67 @@
     const BLOCK_AIR = 0;
     let thirdPerson = false;
       
-    const BLOCKS = {
-      1: { name: 'Dirt', color: 0x5a3e2b },
-      2: { name: 'Stone', color: 0x6e6e6e },
-      3: { name: 'Grass', color: 0x2e8b57 },
-      4: { name: 'Wood', color: 0x7b4a2b },
-      5: { name: 'Leaves', color: 0x3e803e },
-      6: { name: 'Sand', color: 0xd2b48c },
-      7: { name: 'Cobblestone', color: 0x555555 },
-      8: { name: 'Brick', color: 0x8b0000 },
-      9: { name: 'Gold', color: 0xffc300 },
+  const BLOCKS = {
+  1: {
+    name: 'Dirt',
+    color: 0x5a3e2b,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/dirt.png'
+  },
+  2: {
+    name: 'Stone',
+    color: 0x6e6e6e,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/stone.png'
+  },
+  3: {
+    name: 'Grass',
+    color: 0x2e8b57,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/grass_block_top.png'
+  },
+  4: {
+    name: 'Wood',
+    color: 0x7b4a2b,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/oak_planks.png'
+  },
+  5: {
+    name: 'Leaves',
+    color: 0x3e803e,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/oak_leaves.png'
+  },
+  6: {
+    name: 'Sand',
+    color: 0xd2b48c,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/sand.png'
+  },
+  7: {
+    name: 'Cobblestone',
+    color: 0x555555,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/cobblestone.png'
+  },
+  8: {
+    name: 'Brick',
+    color: 0x8b0000,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/bricks.png'
+  },
+  9: {
+    name: 'Gold',
+    color: 0xffc300,
+    textureURL: 'https://minecraft.novaskin.me/resourcepacks/vanilla/block/gold_block.png'
+  }
+};
+    
+      function getMaterialFromURL(url) {
+  const loader = new THREE.TextureLoader();
+  const tex = loader.load(url);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.needsUpdate = true;
+
+  const mat = new THREE.MeshLambertMaterial({ map: tex });
+  return { material: mat, textureCanvas: null };
     }
-  
+    
     
     let inventory = {};
     for (const id in BLOCKS) {
@@ -628,22 +677,31 @@
     }
     
     const materialCache = {};
-    function getMaterialForBlock(id){
-      if(materialCache[id]) return materialCache[id];
-      const meta = BLOCKS[id];
-      const canvas = textureCanvases[id] || (textureCanvases[id] = makeBlockCanvas(meta.color, {
-        type: meta.name.toLowerCase().includes('wood') ? 'wood' :
-              meta.name.toLowerCase().includes('leaves') ? 'leaves' :
-              meta.name.toLowerCase().includes('sand') ? 'sand' :
-              meta.name.toLowerCase().includes('stone') ? 'stone' : ''
-      }));
-    
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.needsUpdate = true;
-      const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: false });
-      materialCache[id] = { material: mat, textureCanvas: canvas };
-      return materialCache[id];
+    function getMaterialForBlock(id) {
+  if (materialCache[id]) return materialCache[id];
+
+  const block = BLOCKS[id];
+  let matInfo;
+
+  if (block.textureURL) {
+    matInfo = getMaterialFromURL(block.textureURL);
+  } else {
+    const canvas = makeBlockCanvas(block.color, {
+      type: block.name.toLowerCase().includes('wood') ? 'wood' :
+            block.name.toLowerCase().includes('leaves') ? 'leaves' :
+            block.name.toLowerCase().includes('sand') ? 'sand' :
+            block.name.toLowerCase().includes('stone') ? 'stone' : ''
+    });
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    const mat = new THREE.MeshLambertMaterial({ map: tex });
+    matInfo = { material: mat, textureCanvas: canvas };
+  }
+
+  materialCache[id] = matInfo;
+  return matInfo;
     }
+    
 
     // shared cube geometry to reduce allocations
     const cubeGeom = new THREE.BoxGeometry(1,1,1);
