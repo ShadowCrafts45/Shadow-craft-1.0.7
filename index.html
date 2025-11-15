@@ -58,14 +58,14 @@
       justify-content: center;
       pointer-events: auto;
     }
-    .btn { width:56px; height:56px; background:rgba(255,255,255,0.06); border-radius:12px; border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center; user-select:none; touch-action:manipulation; pointer-events: auto;}
+    .btn { width:56px; height:56px; background:rgba(255,255,255,0.06); border-radius:12px; border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:20px; display:flex; align-items:center; justify-content:center; user-select:none; touch-action:manipulation; pointer-events: auto; transition: transform 0.1s ease;}
     #hotbar { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; z-index:55; display:flex; gap:8px; pointer-events:none; }
-    .hotbar-slot { pointer-events:auto; width:64px; height:64px; background:rgba(0,0,0,0.6); border-radius:8px; border:2px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-size:12px; cursor:pointer; box-sizing:border-box; }
+    .hotbar-slot { pointer-events:auto; width:64px; height:64px; background:rgba(0,0,0,0.6); border-radius:8px; border:2px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-size:12px; cursor:pointer; box-sizing:border-box; transition: transform 0.1s ease; }
     .hotbar-slot .icon { width:36px; height:36px; border-radius:6px; margin-bottom:6px; background-size:cover; background-position:center; box-shadow: inset 0 -6px 12px rgba(0,0,0,0.25); }
     .hotbar-slot .count { font-size:11px; opacity:0.9; }
     .hotbar-slot.selected { border-color: #ffd36b; box-shadow: 0 0 12px rgba(255,211,107,0.18); transform:translateY(-4px); }
     #progress { position:fixed; left:50%; transform:translateX(-50%); bottom:156px; z-index:68; width:260px; height:14px; background:rgba(255,255,255,0.06); border-radius:8px; overflow:hidden; display:none }
-    #progress > div { height:100%; width:0%; background:linear-gradient(90deg,#ffd36b,#ff8a3d); border-radius:8px }
+    #progress > div { height:100%; width:0%; background:linear-gradient(90deg,#ffd36b,#ff8a3d); border-radius:8px; transition: width 0.1s linear; }
     @media (pointer: fine) { #controls-ui { display:none; } }
     @media (max-width: 420px) {
   #crosshair {
@@ -370,7 +370,7 @@
       <ul>
         <li><b>WASD</b> — Move</li>
         <li><b>Space</b> — Jump</li>
-        <li><b>Q</b> — Break block</li>
+        <li><b>Q / Click</b> — Break block</li>
         <li><b>E</b> — Place block</li>
         <li><b>P</b> — Toggle placing</li>
         <li><b>I</b> — Open inventory</li>
@@ -431,11 +431,21 @@
   <script type="module">
  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js';
 
+    (function(){
+      const style = document.createElement('style');
+      style.textContent = `
+        #btn-jump:active, #btn-toggle-view:active, #btn-break:active:active, #btn-place:active, #btn-inventory:active {
+          transform: scale(0.9);
+        }
+      `;
+      document.head.appendChild(style);
+    })();
+
+
     const select = document.getElementById('world-select');
     const loadBtn = document.getElementById('load-world-button');
     const newBtn = document.getElementById('new-world-button');
 
-    // Stub/initialization for dropdown and world loading/creation
     ['Demo World 1', 'Demo World 2'].forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
@@ -445,15 +455,14 @@
 
     let currentWorldName = select.value || 'Demo World 1';
 
-    // Load selected world - now just starts the game
     loadBtn.addEventListener('click', () => {
       currentWorldName = select.value;
       document.getElementById('start-screen').style.display = 'none';
       document.getElementById('tutorial-box').style.display = 'none';
-      tick(); // Start game loop
+      rebuildHotbarUI();
+      tick();
     });
 
-    // Create new world - now just prompts for name and starts the game
     newBtn.addEventListener('click', () => {
       const name = prompt('Enter new world name:');
       if (!name) return;
@@ -466,7 +475,8 @@
       
       document.getElementById('start-screen').style.display = 'none';
       document.getElementById('tutorial-box').style.display = 'none';
-      tick(); // Start game loop
+      rebuildHotbarUI();
+      tick();
       
     });
       
@@ -500,7 +510,6 @@
       return group;
     }
     
-    // ===== Optimized: flatter terrain, fewer trees, collision fixes, lower pixel ratio =====
     const WORLD_W = 100, WORLD_H = 36, WORLD_D = 100;
     const PLAYER_EYE = 1.6;
     const JOY_DEADZONE = 0.18, MAX_JOY = 48;
@@ -522,7 +531,7 @@
     
     let inventory = {};
     for (const id in BLOCKS) {
-      inventory[id] = 999; // start with full inventory in this no-save version
+      inventory[id] = 999;
     }
     
     let selectedBlockId = 1;
@@ -532,25 +541,21 @@
     function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
     function inBounds(x,y,z){ return x>=0 && y>=0 && z>=0 && x<WORLD_W && y<WORLD_H && z<WORLD_D; }
 
-    // procedural textures (small canvases)
     const textureCanvases = {};
     function makeBlockCanvas(colorHex, opts = {}) {
       const size = 64;
       const c = document.createElement('canvas'); c.width = c.height = size;
       const ctx = c.getContext('2d');
 
-      // Base fill
       ctx.fillStyle = '#' + colorHex.toString(16).padStart(6,'0');
       ctx.fillRect(0, 0, size, size);
 
-      // Soft lighting gradient
       const g = ctx.createLinearGradient(0, 0, size, size);
       g.addColorStop(0, 'rgba(255,255,255,0.08)');
       g.addColorStop(1, 'rgba(0,0,0,0.08)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, size, size);
 
-      // Noise layer
       const img = ctx.getImageData(0, 0, size, size);
       for (let i = 0; i < img.data.length; i += 4) {
         const v = (Math.random() * 24 - 12) | 0;
@@ -560,7 +565,6 @@
       }
       ctx.putImageData(img, 0, 0);
 
-      // Stylized overlays
       if (opts.type === 'wood') {
         ctx.strokeStyle = 'rgba(0,0,0,0.06)';
         ctx.lineWidth = 2;
@@ -603,25 +607,20 @@
       const c = document.createElement('canvas'); c.width = c.height = size;
       const ctx = c.getContext('2d');
 
-      // Skin base
-      ctx.fillStyle = '#f2c18d'; // skin tone
+      ctx.fillStyle = '#f2c18d';
       ctx.fillRect(0, 0, size, size);
 
-      // Hair
-      ctx.fillStyle = '#5a3e2b'; // brown
+      ctx.fillStyle = '#5a3e2b';
       ctx.fillRect(0, 0, size, 16);
 
-      // Eyes
       ctx.fillStyle = '#000';
       ctx.fillRect(20, 24, 4, 4);
       ctx.fillRect(40, 24, 4, 4);
 
-      // Shirt
-      ctx.fillStyle = '#2e8b57'; // green
+      ctx.fillStyle = '#2e8b57';
       ctx.fillRect(0, 32, size, 16);
 
-      // Pants
-      ctx.fillStyle = '#555'; // gray
+      ctx.fillStyle = '#555';
       ctx.fillRect(0, 48, size, 16);
 
       return c;
@@ -645,7 +644,6 @@
       return materialCache[id];
     }
 
-    // shared cube geometry to reduce allocations
     const cubeGeom = new THREE.BoxGeometry(1,1,1);
 
     class VoxelWorld {
@@ -661,7 +659,6 @@
       generateTerrain(){
         for(let x=0;x<this.w;x++){
           for(let z=0;z<this.d;z++){
-            // much flatter: low base + small noise
             const ridge = Math.sin(x*0.08) * Math.cos(z*0.06);
             let h = Math.floor(1 + 3*(0.5 + 0.5*ridge) + Math.floor(Math.random()*1));
             const distEdge = Math.min(x,z,this.w-1-x,this.d-1-z);
@@ -669,7 +666,6 @@
             for(let y=0;y<h;y++){
               if(distEdge < 3) this.set(x,y,z,6); else if(y < h-1) this.set(x,y,z,2); else this.set(x,y,z,3);
             }
-            // fewer trees
             if(h>2 && Math.random() < 0.15 && distEdge >= 5){
               const trunk = 2 + Math.floor(Math.random()*2);
               for(let ty=h; ty<h+trunk && ty<this.h-1; ty++) this.set(x,ty,z,4);
@@ -686,7 +682,6 @@
       get(x,y,z){ if(!this.inBounds(x,y,z)) return BLOCK_AIR; return this.blocks[idx(x,y,z)]; }
       set(x,y,z,v){ if(!this.inBounds(x,y,z)) return; this.blocks[idx(x,y,z)] = v; }
       updateMeshes(){
-        // clear previous
         while(this.group.children.length){ const c = this.group.children.pop(); if(c.geometry) c.geometry.dispose?.(); if(c.material) c.material.dispose?.(); }
         this._meshes = {};
         const lists = {};
@@ -708,13 +703,24 @@
       }
     }
 
-    // ---------- Input, hotbar & UI ----------
     const inputState = { fw:0, bk:0, lt:0, rt:0, run:false, jump:false, place:false, break:false };
     const joystick = { active:false, id:null, startX:0, startY:0, dx:0, dy:0 };
     const hud = document.getElementById('hud');
     const hotbarEl = document.getElementById('hotbar');
     const progressBar = document.getElementById('progress');
     const progressFill = progressBar.querySelector('div');
+    
+    function updateProgress(value, max) {
+      if (max <= 0 || value <= 0) {
+        progressBar.style.display = 'none';
+        progressFill.style.width = '0%';
+      } else {
+        const percentage = Math.min(100, (value / max) * 100);
+        progressBar.style.display = 'block';
+        progressFill.style.width = percentage + '%';
+      }
+    }
+
 
     function rebuildInventoryUI() {
       const grid = document.getElementById('inventory-grid');
@@ -738,6 +744,10 @@
     function rebuildHotbarUI(){
       hotbarEl.innerHTML = '';
       const keys = Object.keys(BLOCKS).map(x=>parseInt(x));
+      if (!selectedBlockId && keys.length > 0) {
+          selectedBlockId = keys[0];
+      }
+      
       for(const id of keys){
         const slot = document.createElement('div');
         slot.className = 'hotbar-slot' + (id===selectedBlockId ? ' selected' : '');
@@ -753,44 +763,35 @@
       const hint = document.getElementById('hint');
       hint.innerText = allowPlacing ? 'Placing enabled — E to place. Press P to toggle. Press Q to break' : 'Placing DISABLED — cannot place blocks. Press P to toggle. Press Q to break';
     }
+    
+    let breakingBlock = null;
+    const BREAK_TIME_MS = 500;
 
     function tick() {
       requestAnimationFrame(tick);
 
-      // ✅ Always show HUD info
       hud.innerText = `Tick running\nSelected: ${BLOCKS[selectedBlockId].name}\nPlacing: ${allowPlacing ? 'ENABLED' : 'DISABLED'}`;
 
      if (inputState.place && allowPlacing) {
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(world.group.children, true);
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(world.group.children, true);
 
-  if (intersects.length > 0) {
-    const hit = intersects[0];
-    const pos = hit.point.clone().add(hit.face.normal).floor();
-    const x = pos.x, y = pos.y, z = pos.z;
+        if (intersects.length > 0) {
+          const hit = intersects[0];
+          const pos = hit.point.clone().add(hit.face.normal).floor();
+          const x = pos.x, y = pos.y, z = pos.z;
 
-    if (world.get(x, y, z) === BLOCK_AIR) {
-      world.set(x, y, z, selectedBlockId);
-      world.updateMeshes();
-    }
-  }
-
-  inputState.place = false;
+          if (world.get(x, y, z) === BLOCK_AIR) {
+            world.set(x, y, z, selectedBlockId);
+            world.updateMeshes();
+          }
         }
-                
-      
 
-      if (inputState.break) {
-        const x = Math.floor(player.pos.x);
-        const y = Math.floor(player.pos.y - 1);
-        const z = Math.floor(player.pos.z);
-        world.set(x, y, z, BLOCK_AIR);
-        world.updateMeshes();
-        inputState.break = false;
-      }
+        inputState.place = false;
+     }
+
     }
 
-    // --- Screenshot Download Logic ---
     function downloadScreenshot() {
       const canvas = renderer.domElement;
       const dataURL = canvas.toDataURL('image/png');
@@ -804,7 +805,6 @@
     const downloadBtn = document.getElementById('download-screenshot-button');
     downloadBtn.addEventListener('click', downloadScreenshot);
 
-    // Dummy save button handler
     const floatingSaveBtn = document.getElementById('floating-save-button');
     floatingSaveBtn.addEventListener('click', () => {
       alert('Saving is disabled in this version.');
@@ -832,7 +832,7 @@
     
       window.addEventListener('keydown', e=>{
         if (e.code === 'KeyZ') {
-          e.preventDefault(); // prevent browser refresh
+          e.preventDefault();
           thirdPerson = !thirdPerson;
         }
         
@@ -865,7 +865,6 @@
         if(e.code==='KeyQ') inputState.break = false;
       });
 
-      // mobile joystick
       const joyLeft = document.getElementById('joy-left');
       const joyKnob = document.getElementById('joy-knob');
       if(joyLeft){
@@ -876,7 +875,6 @@
       function updateKnob(){ if(!joyKnob || !joyLeft) return; const w = joyLeft.clientWidth, h = joyLeft.clientHeight; joyKnob.style.left = (50 + joystick.dx / w * 100) + '%'; joyKnob.style.top = (50 + joystick.dy / h * 100) + '%'; }
       window._mobileJoystick = joystick;
 
-      // look area
       const lookArea = document.getElementById('look-area');
       let lookTouchId = null, lastLookX = 0, lastLookY = 0;
       if(lookArea){
@@ -898,6 +896,8 @@
       confirmLeaveBtn.addEventListener('click', () => {
         confirmPopup.style.display = 'none';
         document.getElementById('start-screen').style.display = 'flex';
+        breakingBlock = null;
+        updateProgress(0, 0);
       });
 
       cancelLeaveBtn.addEventListener('click', () => {
@@ -911,7 +911,6 @@
         tutorialBox.style.display = isVisible ? 'none' : 'block';
       });
     
-      // on-screen buttons
       const btnPlace = document.getElementById('btn-place'), btnBreak = document.getElementById('btn-break'), btnJump = document.getElementById('btn-jump');
       const btnInventory = document.getElementById('btn-inventory');
       if (btnInventory) {
@@ -929,22 +928,20 @@
       if(btnJump){ btnJump.addEventListener('touchstart', e=>{ e.preventDefault(); inputState.jump = true; }, {passive:false}); btnJump.addEventListener('touchend', e=>{ inputState.jump = false; }, {passive:true}); }
     }
 
-    // ---------- Three.js bootstrap ----------
     const renderer = new THREE.WebGLRenderer({ antialias:true });
-    renderer.setPixelRatio(1); // lower pixel ratio for performance
+    renderer.setPixelRatio(1);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB);
     const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.25)); // softer ambient
-    const sun = new THREE.DirectionalLight(0xffffff, 0.4); // dimmer sun
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.4);
     sun.position.set(10, 30, 10);
     scene.add(sun);
     
 
-    // ---------- World & player ----------
     const world = new VoxelWorld(WORLD_W, WORLD_H, WORLD_D, scene);
     const player = {
       pos: new THREE.Vector3(Math.floor(WORLD_W/2)+0.5, WORLD_H + PLAYER_EYE - 2, Math.floor(WORLD_D/2)+0.5),
@@ -958,7 +955,6 @@
     
     playerModel.position.set(player.pos.x, player.pos.y - 1.2, player.pos.z);
     
-    // raycast helper
     const raycaster = new THREE.Raycaster();
     function getBlockTarget(){
       camera.updateMatrixWorld();
@@ -980,7 +976,6 @@
       return null;
     }
 
-    // improved collision: check AABB cells overlapped by player's box
     function isPlayerCollidingAt(pos){
       const half = 0.35;
       const minX = Math.floor(pos.x - half), maxX = Math.floor(pos.x + half);
@@ -997,7 +992,6 @@
       return false;
     }
 
-    // sub-stepped movement to avoid tunneling
     function movePlayerWithCollision(player, dt){
       const disp = player.velocity.clone().multiplyScalar(dt);
       const total = disp.length();
@@ -1009,26 +1003,19 @@
         if(!isPlayerCollidingAt(candidate)){
           player.pos.copy(candidate);
         } else {
-          // simple response: try moving only horizontally then vertically separately
-          // attempt horizontal only
           const horiz = new THREE.Vector3(stepDisp.x, 0, stepDisp.z);
           const candH = player.pos.clone().add(horiz);
           if(!isPlayerCollidingAt(candH)){
             player.pos.copy(candH);
-            // keep vertical velocity for next steps
           } else {
-            // blocked horizontally: stop horizontal velocity
             player.velocity.x = 0;
             player.velocity.z = 0;
           }
-          // vertical attempt will continue in separate vertical stepping below
           break;
         }
       }
     }
-
-    // helper to check placing overlap
-    function wouldOverlapPlayer(tx,ty,tz, ppos){
+function wouldOverlapPlayer(tx,ty,tz, ppos){
       const half = 0.35;
       const pmin = { x: ppos.x - half, y: ppos.y - PLAYER_EYE - 0.1, z: ppos.z - half };
       const pmax = { x: ppos.x + half, y: ppos.y - 0.1 + 0.01, z: ppos.z + half };
@@ -1039,7 +1026,6 @@
              (pmin.z < bmax.z && pmax.z > bmin.z);
     }
 
-    // ---------- Main loop ----------
     let lastTime = performance.now();
     let placeTimer = 0, breakTimer = 0;
     const COOLDOWN_MS = 180;
@@ -1071,10 +1057,8 @@
       player.velocity.x = mvx;
       player.velocity.z = mvz;
 
-      // apply gravity (if not overlapping)
       if(!isPlayerCollidingAt(player.pos)) player.velocity.y -= 12.0 * dt;
 
-      // jump if standing
       if(isPlayerCollidingAt(new THREE.Vector3(player.pos.x, player.pos.y - 0.2, player.pos.z))){
         player.onGround = true;
         if(inputState.jump){
@@ -1085,10 +1069,8 @@
         player.onGround = false;
       }
 
-      // move horizontally with sub-steps
       movePlayerWithCollision(player, dt);
 
-      // vertical substeps
       const vyDisp = player.velocity.y * dt;
       const vsteps = Math.max(1, Math.ceil(Math.abs(vyDisp) / 0.12));
       const vyStep = vyDisp / vsteps;
@@ -1114,7 +1096,6 @@
         camera.position.copy(eye.clone().add(behind));
         camera.lookAt(eye);
 
-        // Show and rotate player model
         playerModel.visible = true;
         playerModel.position.set(player.pos.x, player.pos.y - 1.2, player.pos.z);
         playerModel.rotation.y = player.yaw;
@@ -1127,11 +1108,9 @@
         );
         camera.lookAt(eye.clone().add(lookDir));
 
-        // Hide player model in first-person
         playerModel.visible = false;
       }
       
-      // targeting
       const tgt = getBlockTarget();
       const cross = document.getElementById('crosshair');
       if(cross) cross.style.color = tgt ? '#ffd36b' : 'rgba(255,255,255,0.85)';
@@ -1151,23 +1130,42 @@
         );
       } else {
         window._highlightMesh.visible = false;
+        if (breakingBlock) {
+          breakingBlock = null;
+          updateProgress(0, 0);
+        }
       }
       
-      // breaking
-      if(inputState.break && breakTimer <= 0 && tgt){
+      if(inputState.break && tgt){
         const bx = tgt.block.x, by = tgt.block.y, bz = tgt.block.z;
         const bid = world.get(bx,by,bz);
-        if(bid !== BLOCK_AIR){
-          world.set(bx,by,bz, BLOCK_AIR);
-          inventory[bid] = (inventory[bid] || 0) + 1;
-          world.updateMeshes();
-          rebuildHotbarUI();
-          breakTimer = COOLDOWN_MS;
+        
+        if(breakingBlock && breakingBlock.x === bx && breakingBlock.y === by && breakingBlock.z === bz){
+          breakingBlock.timer += dt * 1000;
+        } else {
+          breakingBlock = { x: bx, y: by, z: bz, id: bid, timer: 0 };
         }
-        inputState.break = false;
+        
+        updateProgress(breakingBlock.timer, BREAK_TIME_MS);
+        
+        if(breakingBlock.timer >= BREAK_TIME_MS){
+          if(bid !== BLOCK_AIR){
+            world.set(bx,by,bz, BLOCK_AIR);
+            inventory[bid] = (inventory[bid] || 0) + 1;
+            world.updateMeshes();
+            rebuildHotbarUI();
+          }
+          breakingBlock = null;
+          updateProgress(0, 0);
+        }
+        
+      } else {
+        if (breakingBlock) {
+          breakingBlock = null;
+          updateProgress(0, 0);
+        }
       }
 
-      // placing
       if(inputState.place && placeTimer <= 0 && tgt){
         if(!allowPlacing){
           const prev = hud.innerHTML;
@@ -1188,7 +1186,6 @@
         inputState.place = false;
       }
 
-      // sun rotation
       const t = performance.now() * 0.00012;
       sun.position.set(50*Math.sin(t), 50*Math.cos(t), 20*Math.cos(t*0.7));
 
@@ -1200,8 +1197,16 @@
       requestAnimationFrame(animate);
     }
 
-    // start
     rebuildHotbarUI();
+    const mouse = { x: 0, y: 0 }; 
+    window.addEventListener('mousemove', (e) => {
+        if (document.pointerLockElement === document.body) {
+        } else {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        }
+    });
+
     requestAnimationFrame(animate);
     camera.position.set(player.pos.x, player.pos.y, player.pos.z);
     camera.lookAt(player.pos.x + Math.sin(player.yaw), player.pos.y + Math.sin(player.pitch), player.pos.z + Math.cos(player.yaw));
